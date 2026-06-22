@@ -13,7 +13,7 @@
             <div class="brand-mark">BA</div>
             <div class="header-titles">
                 <div class="header-title">Monitoring Penugasan</div>
-                <div class="header-subtitle">Biro Advokasi</div>
+                <div class="header-subtitle">Dashboard Real-time &mdash; Biro Advokasi</div>
             </div>
         </div>
 
@@ -28,25 +28,34 @@
         </div>
     </header>
 
+    <div class="controls-bar">
+        <div class="tabs" id="sheet-tabs">
+            <button class="tab-btn active" data-sheet="ST Perkara">Perkara</button>
+            <button class="tab-btn" data-sheet="ST Pendampingan">Pendampingan</button>
+            <button class="tab-btn" data-sheet="ST Lain-Lain">Lain-Lain</button>
+        </div>
+        <div class="filters" id="date-filters">
+            <button class="filter-btn active" data-filter="all">Semua Waktu</button>
+            <button class="filter-btn" data-filter="today">Hari Ini</button>
+            <button class="filter-btn" data-filter="thisWeek">Minggu Ini</button>
+            <button class="filter-btn" data-filter="thisMonth">Bulan Ini</button>
+        </div>
+    </div>
+
     <div class="progress-bar" id="progress-bar"></div>
 
-    <div class="tableau-container" id="tableau-container">
+    <div class="data-container" id="data-container">
+        <table class="data-table">
+            <thead>
+                <tr id="table-head-row">
+                    <th>Memuat Data...</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                </tbody>
+        </table>
+    </div>
 
-        <div class="embed-placeholder">
-            <svg class="icon" width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="6" y="6" width="60" height="60" rx="8" stroke="#0D1B2A" stroke-width="3.5"/>
-                <rect x="14" y="24" width="14" height="28" rx="3" fill="#C8A84B"/>
-                <rect x="32" y="32" width="14" height="20" rx="3" fill="#0D1B2A"/>
-                <rect x="50" y="18" width="8" height="34" rx="3" fill="#C8A84B" opacity="0.55"/>
-                <line x1="14" y1="18" x2="58" y2="18" stroke="#0D1B2A" stroke-width="2.5" stroke-linecap="round"/>
-            </svg>
-            <p class="label">
-                Paste Tableau embed code di dalam
-                <code>#tableau-container</code>
-            </p>
-        </div>
-
-        </div><script src="script.js"></script>
-
+    <script src="script.js"></script>
 </body>
 </html>
