@@ -4,235 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monitoring Penugasan Biro Advokasi</title>
-    <style>
-        /* ── Reset ── */
-        *, *::before, *::after {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
-            background: #0D1B2A;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-        }
-
-        /* ════════════════════════════════
-           HEADER
-        ════════════════════════════════ */
-        .header {
-            height: 60px;
-            background: linear-gradient(90deg, #0D1B2A 0%, #162536 50%, #0D1B2A 100%);
-            border-bottom: 2px solid #C8A84B;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 24px;
-            position: relative;
-            z-index: 100;
-            flex-shrink: 0;
-        }
-
-        /* Left: brand mark + title */
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .brand-mark {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            background: #C8A84B;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            font-weight: 900;
-            color: #0D1B2A;
-            letter-spacing: -0.02em;
-            flex-shrink: 0;
-        }
-
-        .header-titles {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .header-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: #FFFFFF;
-            letter-spacing: 0.07em;
-            text-transform: uppercase;
-            line-height: 1;
-        }
-
-        .header-subtitle {
-            font-size: 9.5px;
-            color: #C8A84B;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-            opacity: 0.85;
-        }
-
-        /* Right: live badge + date + clock */
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-        }
-
-        .live-badge {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(200, 168, 75, 0.10);
-            border: 1px solid rgba(200, 168, 75, 0.38);
-            border-radius: 20px;
-            padding: 4px 12px 4px 10px;
-        }
-
-        .live-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #4CC88A;
-            animation: pulse 2s ease-in-out infinite;
-            flex-shrink: 0;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1;   transform: scale(1);   }
-            50%       { opacity: 0.3; transform: scale(0.65); }
-        }
-
-        .live-text {
-            font-size: 9.5px;
-            font-weight: 800;
-            color: #C8A84B;
-            letter-spacing: 0.20em;
-        }
-
-        .header-date {
-            font-size: 12px;
-            font-weight: 500;
-            color: rgba(255,255,255,0.55);
-            letter-spacing: 0.04em;
-            white-space: nowrap;
-        }
-
-        .header-clock {
-            font-size: 22px;
-            font-weight: 700;
-            color: #FFFFFF;
-            font-variant-numeric: tabular-nums;
-            letter-spacing: 0.06em;
-            white-space: nowrap;
-            min-width: 88px;
-            text-align: right;
-        }
-
-        /* Decorative separator */
-        .sep {
-            width: 1px;
-            height: 28px;
-            background: rgba(255,255,255,0.15);
-        }
-
-        /* ════════════════════════════════
-           TABLEAU EMBED CONTAINER
-           height: 100vh - header;
-           overflow: hidden so scrollbars
-           are invisible; scrollTop still
-           works for programmatic scroll.
-        ════════════════════════════════ */
-        .tableau-container {
-            width: 100%;
-            height: calc(100vh - 60px);  /* fill remaining viewport */
-            overflow: hidden;            /* hide scrollbar; JS drives scrollTop */
-            position: relative;
-            background: #FFFFFF;
-
-            /* suppress scrollbar across engines */
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-
-        .tableau-container::-webkit-scrollbar {
-            display: none;
-        }
-
-        /* Ensure Tableau iframe / vizql objects fill the width */
-        .tableau-container iframe,
-        .tableau-container object {
-            width: 100% !important;
-            border: none;
-            display: block;
-        }
-
-        /* ── Placeholder (remove after pasting embed code) ── */
-        .embed-placeholder {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 200vh;  /* intentionally tall so auto-scroll has content to demo */
-            background: linear-gradient(160deg, #F4F7FB 0%, #E8EDF5 100%);
-            gap: 18px;
-            user-select: none;
-        }
-
-        .embed-placeholder .icon {
-            opacity: 0.28;
-        }
-
-        .embed-placeholder .label {
-            font-size: 14px;
-            color: #7A8799;
-            letter-spacing: 0.04em;
-            font-style: italic;
-        }
-
-        .embed-placeholder code {
-            font-family: 'Consolas', 'Courier New', monospace;
-            background: rgba(0,0,0,0.07);
-            padding: 2px 7px;
-            border-radius: 4px;
-            font-style: normal;
-            font-size: 13px;
-        }
-
-        /* Scroll-progress bar (thin strip at very top of container) */
-        .progress-bar {
-            position: fixed;
-            top: 60px;
-            left: 0;
-            height: 2px;
-            width: 0%;
-            background: linear-gradient(90deg, #C8A84B, #F0C96E);
-            z-index: 200;
-            transition: width 0.1s linear;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- ══════════════════════════════════════
-         HEADER
-    ══════════════════════════════════════ -->
     <header class="header">
-
         <div class="header-left">
             <div class="brand-mark">BA</div>
             <div class="header-titles">
-                <div class="header-title">Monitoring Penugasan Biro Advokasi</div>
-                <div class="header-subtitle">Dashboard Real-time &mdash; Pemantauan Otomatis</div>
+                <div class="header-title">Monitoring Penugasan</div>
+                <div class="header-subtitle">Biro Advokasi</div>
             </div>
         </div>
 
@@ -245,48 +26,19 @@
             <div class="header-date" id="date-display">&nbsp;</div>
             <div class="header-clock" id="clock-display">--:--:--</div>
         </div>
-
     </header>
 
-    <!-- Thin progress strip showing scroll position -->
     <div class="progress-bar" id="progress-bar"></div>
 
-    <!-- ══════════════════════════════════════
-         TABLEAU EMBED CONTAINER
-         ▼ PASTE YOUR TABLEAU EMBED CODE
-           INSIDE THIS DIV — replace the
-           .embed-placeholder block below.
-    ══════════════════════════════════════ -->
     <div class="tableau-container" id="tableau-container">
 
-        <!-- ▼▼▼  PASTE TABLEAU EMBED CODE HERE  ▼▼▼ -->
-
-        <!--
-            Example embed code from Tableau Server looks like:
-
-            <div class='tableauPlaceholder' id='viz1234567890' style='position: relative'>
-              <object class='tableauViz' style='display:none;'>
-                <param name='host_url' value='https%3A%2F%2Fyour-tableau-server.com%2F' />
-                <param name='site_root' value='' />
-                <param name='name' value='YourWorkbook/YourDashboard' />
-                <param name='tabs' value='no' />
-                <param name='toolbar' value='hidden' />
-              </object>
-            </div>
-            <script type='text/javascript' src='https://your-tableau-server.com/javascripts/api/viz_v1.js'></script>
-        -->
-
-        <!-- Placeholder shown until real embed code is pasted -->
         <div class="embed-placeholder">
-            <svg class="icon" width="72" height="72" viewBox="0 0 72 72"
-                 fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="6" y="6" width="60" height="60" rx="8"
-                      stroke="#0D1B2A" stroke-width="3.5"/>
+            <svg class="icon" width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="6" y="6" width="60" height="60" rx="8" stroke="#0D1B2A" stroke-width="3.5"/>
                 <rect x="14" y="24" width="14" height="28" rx="3" fill="#C8A84B"/>
                 <rect x="32" y="32" width="14" height="20" rx="3" fill="#0D1B2A"/>
                 <rect x="50" y="18" width="8" height="34" rx="3" fill="#C8A84B" opacity="0.55"/>
-                <line x1="14" y1="18" x2="58" y2="18"
-                      stroke="#0D1B2A" stroke-width="2.5" stroke-linecap="round"/>
+                <line x1="14" y1="18" x2="58" y2="18" stroke="#0D1B2A" stroke-width="2.5" stroke-linecap="round"/>
             </svg>
             <p class="label">
                 Paste Tableau embed code di dalam
@@ -294,102 +46,7 @@
             </p>
         </div>
 
-        <!-- ▲▲▲  END TABLEAU EMBED CODE  ▲▲▲ -->
-
-    </div><!-- /.tableau-container -->
-
-
-    <script>
-    /* ══════════════════════════════════════════════════
-       LIVE CLOCK & DATE
-    ══════════════════════════════════════════════════ */
-    (function initClock() {
-        const clockEl = document.getElementById('clock-display');
-        const dateEl  = document.getElementById('date-display');
-
-        const DAYS = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-        const MONTHS = [
-            'Januari','Februari','Maret','April','Mei','Juni',
-            'Juli','Agustus','September','Oktober','November','Desember'
-        ];
-
-        function tick() {
-            const now = new Date();
-            const hh  = String(now.getHours()).padStart(2, '0');
-            const mm  = String(now.getMinutes()).padStart(2, '0');
-            const ss  = String(now.getSeconds()).padStart(2, '0');
-            clockEl.textContent = `${hh}:${mm}:${ss}`;
-
-            const dayName   = DAYS[now.getDay()];
-            const dateNum   = now.getDate();
-            const monthName = MONTHS[now.getMonth()];
-            const year      = now.getFullYear();
-            dateEl.textContent = `${dayName}, ${dateNum} ${monthName} ${year}`;
-        }
-
-        tick();
-        setInterval(tick, 1000);
-    })();
-
-
-    /* ══════════════════════════════════════════════════
-       AUTO-SCROLL LOOP
-       Continuously increments scrollTop of the
-       #tableau-container div. Pauses at the bottom,
-       resets to top, pauses again, then resumes.
-    ══════════════════════════════════════════════════ */
-    (function initAutoScroll() {
-
-        const container   = document.getElementById('tableau-container');
-        const progressBar = document.getElementById('progress-bar');
-
-        /* ── Tunable constants ── */
-        const SCROLL_PX        = 1;     // pixels advanced per tick
-        const TICK_MS          = 25;    // interval between ticks (ms) — ~40 fps
-        const PAUSE_BOTTOM_MS  = 4000;  // pause at bottom before jumping to top (ms)
-        const PAUSE_TOP_MS     = 2000;  // pause at top before scrolling again (ms)
-
-        let pausing = false;
-
-        setInterval(function autoScrollTick() {
-            if (pausing) return;
-
-            const maxScroll = container.scrollHeight - container.clientHeight;
-
-            // Nothing to scroll (content fits in viewport)
-            if (maxScroll <= 0) return;
-
-            /* ── Update thin progress bar ── */
-            const pct = (container.scrollTop / maxScroll) * 100;
-            progressBar.style.width = pct + '%';
-
-            /* ── Check if we have reached (or passed) the bottom ── */
-            if (container.scrollTop + SCROLL_PX >= maxScroll) {
-                container.scrollTop = maxScroll;   // clamp exactly at bottom
-                progressBar.style.width = '100%';
-                pausing = true;
-
-                setTimeout(function onBottomPause() {
-                    /* Jump back to top */
-                    container.scrollTop = 0;
-                    progressBar.style.width = '0%';
-
-                    /* Pause at top before resuming */
-                    setTimeout(function onTopPause() {
-                        pausing = false;
-                    }, PAUSE_TOP_MS);
-
-                }, PAUSE_BOTTOM_MS);
-
-            } else {
-                /* Normal scroll step */
-                container.scrollTop += SCROLL_PX;
-            }
-
-        }, TICK_MS);
-
-    })();
-    </script>
+        </div><script src="script.js"></script>
 
 </body>
 </html>
