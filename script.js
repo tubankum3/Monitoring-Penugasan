@@ -2,7 +2,7 @@
 const SHEET_ID = '1FOltLmWhUQ7Ouorzu1yHJsFmbzN45a_PpAiSkuuFUOA';
 let currentSheet = 'ST Perkara';
 let currentFilter = 'all';
-let allData = []; // Menyimpan data dari sheet yang sedang aktif
+let allData = [];
 
 // Peta Dinamis Indeks Kolom Tanggal (0 = Kolom A, 1 = Kolom B, dst.)
 const SHEET_DATE_INDEXES = {
@@ -35,19 +35,21 @@ function normalizeDate(dateObj) {
 function extractDateRange(dateString) {
     if (!dateString) return null;
     
-    const parse = (str) => {
-        const parts = str.trim().split(' ');
+    // Pastikan selalu dalam format string untuk menghindari error .includes()
+    const str = String(dateString);
+
+    const parse = (s) => {
+        const parts = s.trim().split(' ');
         if (parts.length < 3) return null;
         return new Date(parts[2], idMonths[parts[1]], parts[0]);
     };
 
-    // Deteksi otomatis jika data berupa rentang waktu menggunakan kata hubung "s.d."
-    if (dateString.includes('s.d.')) {
-        const parts = dateString.split('s.d.');
+    if (str.includes('s.d.')) {
+        const parts = str.split('s.d.');
         return { start: normalizeDate(parse(parts[0])), end: normalizeDate(parse(parts[1])) };
     }
     
-    const single = normalizeDate(parse(dateString));
+    const single = normalizeDate(parse(str));
     return { start: single, end: single };
 }
 
@@ -55,20 +57,18 @@ function rowPassesFilter(dateString, filterType) {
     if (filterType === 'all') return true;
     
     const range = extractDateRange(dateString);
-    if (!range) return false; 
+    if (!range || isNaN(range.start.getTime())) return false; 
 
     const now = normalizeDate(new Date());
     
-    // Perhitungan Batas Awal & Akhir Waktu Kerja
     const startOfWeek = new Date(now); 
-    startOfWeek.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1)); // Dimulai dari hari Senin
+    startOfWeek.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
     const endOfWeek = new Date(startOfWeek); 
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    // Evaluasi kecocokan filter
     if (filterType === 'today') return (range.start <= now && range.end >= now);
     if (filterType === 'thisWeek') return (range.start <= endOfWeek && range.end >= startOfWeek);
     if (filterType === 'thisMonth') return (range.start <= endOfMonth && range.end >= startOfMonth);
@@ -85,14 +85,18 @@ async function fetchData() {
     try {
         const response = await fetch(url);
         const text = await response.text();
-        const json = JSON.parse(text.substring(47).slice(0, -2)); // Membersihkan bungkus teks API Google Viz
+        
+        // PERBAIKAN 1: Ekstraksi JSON Dinamis (Anti Gagal)
+        const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+        const json = JSON.parse(jsonString);
         
         allData = json.table; 
         renderTable();
     } catch (e) {
-        console.error("Fetch error:", e);
+        console.error("Kesalahan Sistem:", e);
         thead.innerHTML = '';
-        tbody.innerHTML = `<tr><td style="text-align:center; padding: 30px; color:#ff6b6b;">Gagal memuat data. Pastikan Google Sheet Anda diatur ke hak akses: "Anyone with the link can view".</td></tr>`;
+        // Menampilkan pesan error asli ke layar agar mudah dilacak jika terjadi lagi
+        tbody.innerHTML = `<tr><td style="text-align:center; padding: 30px; color:#ff6b6b;"><strong>Gagal memuat data.</strong><br><br>Detail Error: ${e.message}</td></tr>`;
     }
 }
 
@@ -104,37 +108,47 @@ function renderTable() {
 
     if (!allData || !allData.cols) return;
 
-    // 1. Pembuatan Kolom Header secara Otomatis
     allData.cols.forEach(col => {
         if (col.label) thead.innerHTML += `<th>${col.label}</th>`;
     });
 
-    // 2. Ambil Indeks Kolom Tanggal Berdasarkan Sheet yang Sedang Aktif
     const dateIdx = SHEET_DATE_INDEXES[currentSheet];
-
-    // 3. Pemuatan Baris Data dengan Filter Waktu Terpasang
     let visibleRows = 0;
+
     allData.rows.forEach(row => {
-        const dateStr = row.c[dateIdx] ? row.c[dateIdx].v : null;
+        // PERBAIKAN 2: Penanganan Baris Kosong & Format Tanggal Google
+        if (!row || !row.c) return; 
+
+        let dateStr = null;
+        if (row.c.length > dateIdx && row.c[dateIdx] !== null) {
+            const cellData = row.c[dateIdx];
+            // Gunakan nilai format ('f') jika ada (contoh: "22 Juni 2026"), jika tidak gunakan nilai asli ('v')
+            const rawVal = cellData.f ? cellData.f : cellData.v;
+            dateStr = rawVal ? String(rawVal) : null;
+        }
         
         if (rowPassesFilter(dateStr, currentFilter)) {
             visibleRows++;
             let tr = '<tr>';
-            row.c.forEach((cell, index) => {
-                if (index < allData.cols.length && allData.cols[index].label) {
-                    tr += `<td>${cell ? cell.v : '-'}</td>`;
+            
+            // Loop persis sesuai jumlah kolom header (menghindari error array buntung)
+            allData.cols.forEach((colDef, index) => {
+                if (colDef.label) {
+                    const cell = (index < row.c.length && row.c[index] !== null) ? row.c[index] : null;
+                    const displayValue = cell ? (cell.f ? cell.f : cell.v) : '-';
+                    tr += `<td>${displayValue}</td>`;
                 }
             });
+            
             tr += '</tr>';
             tbody.innerHTML += tr;
         }
     });
 
     if (visibleRows === 0) {
-        tbody.innerHTML = `<tr><td colspan="${allData.cols.length}" style="text-align:center; padding: 40px; color:#8C9CAE;">Tidak ada data penugasan aktif untuk filter periode ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${allData.cols.length}" style="text-align:center; padding: 40px; color:#8C9CAE;">Tidak ada data penugasan aktif untuk rentang waktu ini.</td></tr>`;
     }
 
-    // Mengembalikan posisi scroll ke atas setiap kali tabel berganti tab/filter
     document.getElementById('data-container').scrollTop = 0;
 }
 
@@ -154,25 +168,22 @@ function initAutoScroll() {
             return;
         }
 
-        // Update indikator bar progres tipis di bawah header
         progress.style.width = `${(container.scrollTop / maxScroll) * 100}%`;
 
-        // Deteksi jika guliran menyentuh baris data terakhir (paling bawah)
         if (container.scrollTop + 1 >= maxScroll) {
             container.scrollTop = maxScroll;
             progress.style.width = '100%';
             pausing = true;
             
-            // Jeda di bawah (4 detik) -> Lompat ke atas -> Jeda di atas (2 detik) -> Mulai Gulir Lagi
             setTimeout(() => {
                 container.scrollTop = 0;
                 progress.style.width = '0%';
                 setTimeout(() => pausing = false, 2000);
             }, 4000);
         } else {
-            container.scrollTop += 1; // Gulir ke bawah sebanyak 1 piksel per tick
+            container.scrollTop += 1; 
         }
-    }, 30); // Kecepatan gulir (30ms per langkah memberikan efek gulir yang sangat halus untuk dibaca)
+    }, 30); 
 }
 
 /* ── Event Listener Interaksi Pengguna ── */
@@ -193,7 +204,7 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
         e.target.classList.add('active');
         
         currentFilter = e.target.getAttribute('data-filter');
-        renderTable(); // Re-render instan tanpa melakukan hit jaringan ulang
+        renderTable(); 
     });
 });
 
@@ -201,6 +212,4 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 initClock();
 fetchData();
 initAutoScroll();
-
-// Sinkronisasi background otomatis dengan server Google Sheets setiap 15 menit
 setInterval(fetchData, 900000);
