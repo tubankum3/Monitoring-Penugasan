@@ -54,7 +54,39 @@ button { cursor: pointer; border: none; outline: none; transition: 0.2s; font-we
     flex-grow: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; background: #0A1521;
 }
 .data-container::-webkit-scrollbar { display: none; }
-.data-table { width: 100%; border-collapse: collapse; text-align: left; }
-.data-table th { background: #0D1B2A; color: #C8A84B; padding: 16px 24px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #C8A84B; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
-.data-table td { padding: 16px 24px; font-size: 14px; border-bottom: 1px solid #1A3048; line-height: 1.5; white-space: nowrap; }
+
+/* Menetapkan batas tabel agar tidak meluber keluar layar */
+.data-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    text-align: left; 
+    table-layout: auto; 
+}
+
+/* Ukuran Font Header Tabel dibuat 2x lebih besar (26px) */
+.data-table th { 
+    background: #0D1B2A; 
+    color: #C8A84B; 
+    padding: 20px 24px; 
+    font-size: 26px; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    position: sticky; 
+    top: 0; 
+    z-index: 10; 
+    border-bottom: 2px solid #C8A84B; 
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); 
+}
+
+/* Ukuran Font Data Tabel dibuat 2x lebih besar (28px) dan teks diset untuk Wrap */
+.data-table td { 
+    padding: 20px 24px; 
+    font-size: 28px; 
+    border-bottom: 1px solid #1A3048; 
+    line-height: 1.4; 
+    white-space: normal;      /* Mengizinkan teks untuk turun ke baris baru */
+    word-wrap: break-word;    /* Memotong kata panjang jika menabrak batas layar */
+    vertical-align: top;      /* Menjaga teks tetap rapi di atas ketika baris meninggi */
+}
+
 .data-table tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
