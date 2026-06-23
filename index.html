@@ -29,31 +29,70 @@
     </header>
 
     <div class="controls-bar">
-        <div class="tabs" id="sheet-tabs">
-            <button class="tab-btn active" data-sheet="ST Perkara">ST Perkara</button>
-            <button class="tab-btn" data-sheet="ST Pendampingan">ST Pendampingan</button>
-            <button class="tab-btn" data-sheet="ST Lain-Lain">ST Lain-Lain</button>
-        </div>
-        <div class="filters" id="date-filters">
-            <button class="filter-btn active" data-filter="all">Semua Waktu</button>
-            <button class="filter-btn" data-filter="today">Hari Ini</button>
-            <button class="filter-btn" data-filter="thisWeek">Minggu Ini</button>
-            <button class="filter-btn" data-filter="thisMonth">Bulan Ini</button>
+        <div class="filters-container">
+            <span class="filter-label">Filter Periode:</span>
+            <div class="filters" id="date-filters">
+                <button class="filter-btn" data-filter="all">Semua Waktu</button>
+                <button class="filter-btn active" data-filter="today">Hari Ini</button>
+                <button class="filter-btn" data-filter="thisWeek">Minggu Ini</button>
+                <button class="filter-btn" data-filter="thisMonth">Bulan Ini</button>
+            </div>
         </div>
     </div>
 
     <div class="progress-bar" id="progress-bar"></div>
 
     <div class="data-container" id="data-container">
-        <table class="data-table">
-            <thead>
-                <tr id="table-head-row">
-                    <th>Memuat Data...</th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-                </tbody>
-        </table>
+        
+<div class="table-section">
+            <h2 class="section-title">
+                <svg class="section-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+                PENANGANAN PERKARA
+            </h2>
+            <table class="data-table">
+                <thead>
+                    <tr id="head-st-perkara"><th>Memuat Data...</th></tr>
+                </thead>
+                <tbody id="body-st-perkara"></tbody>
+            </table>
+        </div>
+
+        <div class="table-section">
+            <h2 class="section-title">
+                <svg class="section-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                PENDAMPINGAN HUKUM
+            </h2>
+            <table class="data-table">
+                <thead>
+                    <tr id="head-st-pendampingan"><th>Memuat Data...</th></tr>
+                </thead>
+                <tbody id="body-st-pendampingan"></tbody>
+            </table>
+        </div>
+
+        <div class="table-section">
+            <h2 class="section-title">
+                <svg class="section-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                PENUGASAN LAIN-LAIN
+            </h2>
+            <table class="data-table">
+                <thead>
+                    <tr id="head-st-lain-lain"><th>Memuat Data...</th></tr>
+                </thead>
+                <tbody id="body-st-lain-lain"></tbody>
+            </table>
+        </div>
+
     </div>
 
     <script src="script.js"></script>
