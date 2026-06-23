@@ -104,16 +104,21 @@ async function fetchData() {
         const response = await fetch(url);
         const text = await response.text();
         
-        // Ekstraksi JSON Dinamis (Anti Gagal)
+        // Ekstraksi JSON Dinamis
         const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
         const json = JSON.parse(jsonString);
+        
+        // PERBAIKAN ANTI-SILENT FAIL: Cek apakah Google membalas dengan status Error
+        if (json.status === 'error') {
+            const errMsg = (json.errors && json.errors[0]) ? json.errors[0].message : "Kesalahan Tidak Diketahui";
+            throw new Error(`Google API: ${errMsg} (Pastikan nama Sheet benar tanpa spasi berlebih)`);
+        }
         
         allData = json.table; 
         renderTable();
     } catch (e) {
         console.error("Kesalahan Sistem:", e);
         thead.innerHTML = '';
-        // Menampilkan pesan error asli ke layar agar mudah dilacak jika terjadi lagi
         tbody.innerHTML = `<tr><td style="text-align:center; padding: 30px; color:#ff6b6b;"><strong>Gagal memuat data.</strong><br><br>Detail Error: ${e.message}</td></tr>`;
     }
 }
@@ -124,10 +129,16 @@ function renderTable() {
     thead.innerHTML = ''; 
     tbody.innerHTML = '';
 
-    if (!allData || !allData.cols) return;
+    // Mencegah error jika data ditarik namun format tabel cacat
+    if (!allData || !allData.cols) {
+        tbody.innerHTML = `<tr><td style="text-align:center; padding: 30px; color:#8C9CAE;">Struktur data tabel kosong atau tidak ditemukan.</td></tr>`;
+        return;
+    }
 
-    allData.cols.forEach(col => {
-        if (col.label) thead.innerHTML += `<th>${col.label}</th>`;
+    // PERBAIKAN HEADER: Memaksa pembuatan kolom bahkan jika Google tidak mendeteksi nama labelnya
+    allData.cols.forEach((col, index) => {
+        const headerText = (col && col.label) ? col.label : `Kolom ${index + 1}`;
+        thead.innerHTML += `<th>${headerText}</th>`;
     });
 
     const dateIdx = SHEET_DATE_INDEXES[currentSheet];
@@ -149,13 +160,11 @@ function renderTable() {
             visibleRows++;
             let tr = '<tr>';
             
-            // Loop persis sesuai jumlah kolom header (menghindari error array buntung)
+            // Loop persis sesuai jumlah kolom header (menghindari array patah akibat col.label kosong)
             allData.cols.forEach((colDef, index) => {
-                if (colDef.label) {
-                    const cell = (index < row.c.length && row.c[index] !== null) ? row.c[index] : null;
-                    const displayValue = cell ? (cell.f ? cell.f : cell.v) : '-';
-                    tr += `<td>${displayValue}</td>`;
-                }
+                const cell = (index < row.c.length && row.c[index] !== null) ? row.c[index] : null;
+                const displayValue = cell ? (cell.f ? cell.f : cell.v) : '-';
+                tr += `<td>${displayValue}</td>`;
             });
             
             tr += '</tr>';
