@@ -4,6 +4,13 @@ let currentSheet = 'ST Perkara';
 let currentFilter = 'all';
 let allData = [];
 
+// Kueri Spesifik untuk Membatasi Kolom
+const SHEET_QUERIES = {
+    'ST Perkara': 'SELECT A,B,C,D,E,F,G',
+    'ST Pendampingan': 'SELECT A,B,C,D,E',
+    'ST Lain-Lain': 'SELECT A,B,C,D,E'
+};
+
 // Peta Dinamis Indeks Kolom Tanggal (0 = Kolom A, 1 = Kolom B, dst.)
 const SHEET_DATE_INDEXES = {
     'ST Perkara': 3,       // Kolom D (Indeks 3)
@@ -26,38 +33,36 @@ function initClock() {
 }
 
 /* ── Logika Parser & Penyaringan Rentang Tanggal Indonesia ── */
-const idMonths = { "Januari":0, "Februari":1, "Maret":2, "April":3, "Mei":4, "Juni":5, "Juli":6, "Agustus":7, "September":8, "Oktober":9, "November":10, "Desember":11 };
+const idMonths = { "januari":0, "februari":1, "maret":2, "april":3, "mei":4, "juni":5, "juli":6, "agustus":7, "september":8, "oktober":9, "november":10, "desember":11 };
 
 function normalizeDate(dateObj) { 
+    if (!dateObj || typeof dateObj.getFullYear !== 'function') return null;
     return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()); 
 }
 
 function extractDateRange(dateString) {
     if (!dateString) return null;
     
-    // Pastikan selalu dalam format string untuk menghindari error .includes()
-    const str = String(dateString);
+    const str = String(dateString).trim();
 
     const parse = (s) => {
-        // Menggunakan regex /\s+/ agar aman dari spasi ganda
         const parts = s.trim().split(/\s+/);
-        if (parts.length < 3) return null; // Jika bukan format 3 kata, kembalikan null
+        if (parts.length < 3) return null; 
         
-        const monthIdx = idMonths[parts[1]];
-        if (monthIdx === undefined) return null; // Jika nama bulan salah ketik, abaikan
+        const monthIdx = idMonths[parts[1].toLowerCase()];
+        if (monthIdx === undefined) return null; 
         
         const parsedDate = new Date(parts[2], monthIdx, parts[0]);
-        if (isNaN(parsedDate.getTime())) return null; // Jika hasilnya Invalid Date, abaikan
+        if (isNaN(parsedDate.getTime())) return null; 
         
         return parsedDate;
     };
 
-    if (str.includes('s.d.')) {
-        const parts = str.split('s.d.');
+    if (str.toLowerCase().includes('s.d.')) {
+        const parts = str.toLowerCase().split('s.d.');
         const startDt = parse(parts[0]);
         const endDt = parse(parts[1]);
         
-        // PERBAIKAN: Pastikan kedua tanggal valid sebelum diproses ke normalizeDate
         if (!startDt || !endDt) return null; 
         
         return { start: normalizeDate(startDt), end: normalizeDate(endDt) };
@@ -65,7 +70,6 @@ function extractDateRange(dateString) {
     
     const singleDt = parse(str);
     
-    // PERBAIKAN: Pastikan tanggal valid sebelum diproses ke normalizeDate
     if (!singleDt) return null;
     
     return { start: normalizeDate(singleDt), end: normalizeDate(singleDt) };
@@ -75,17 +79,19 @@ function rowPassesFilter(dateString, filterType) {
     if (filterType === 'all') return true;
     
     const range = extractDateRange(dateString);
-    if (!range) return false; // Baris dengan teks tanggal yang invalid/kosong akan disembunyikan saat difilter
+    if (!range || !range.start || !range.end) return false; 
 
     const now = normalizeDate(new Date());
+    if (!now) return false; 
     
-    const startOfWeek = new Date(now); 
-    startOfWeek.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
-    const endOfWeek = new Date(startOfWeek); 
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
     
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const startOfWeek = new Date(currentYear, currentMonth, now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
+    const endOfWeek = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + 6);
+    
+    const startOfMonth = new Date(currentYear, currentMonth, 1);
+    const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
 
     if (filterType === 'today') return (range.start <= now && range.end >= now);
     if (filterType === 'thisWeek') return (range.start <= endOfWeek && range.end >= startOfWeek);
@@ -96,7 +102,9 @@ function rowPassesFilter(dateString, filterType) {
 
 /* ── Penarikan Data Dan Rendering Tabel Dinamis ── */
 async function fetchData() {
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(currentSheet)}`;
+    const tqStr = SHEET_QUERIES[currentSheet] || 'SELECT *';
+    // Parameter headers=1 memastikan baris 1 selalu dibaca sebagai judul kolom
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&headers=1&tq=${encodeURIComponent(tqStr)}&sheet=${encodeURIComponent(currentSheet)}`;
     const tbody = document.getElementById('table-body');
     const thead = document.getElementById('table-head-row');
     
@@ -104,14 +112,12 @@ async function fetchData() {
         const response = await fetch(url);
         const text = await response.text();
         
-        // Ekstraksi JSON Dinamis
         const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
         const json = JSON.parse(jsonString);
         
-        // PERBAIKAN ANTI-SILENT FAIL: Cek apakah Google membalas dengan status Error
         if (json.status === 'error') {
-            const errMsg = (json.errors && json.errors[0]) ? json.errors[0].message : "Kesalahan Tidak Diketahui";
-            throw new Error(`Google API: ${errMsg} (Pastikan nama Sheet benar tanpa spasi berlebih)`);
+            const errMsg = (json.errors && json.errors[0] && json.errors[0].message) ? json.errors[0].message : "Kesalahan Tidak Diketahui";
+            throw new Error(`Google API: ${errMsg}`);
         }
         
         allData = json.table; 
@@ -129,13 +135,12 @@ function renderTable() {
     thead.innerHTML = ''; 
     tbody.innerHTML = '';
 
-    // Mencegah error jika data ditarik namun format tabel cacat
     if (!allData || !allData.cols) {
         tbody.innerHTML = `<tr><td style="text-align:center; padding: 30px; color:#8C9CAE;">Struktur data tabel kosong atau tidak ditemukan.</td></tr>`;
         return;
     }
 
-    // PERBAIKAN HEADER: Memaksa pembuatan kolom bahkan jika Google tidak mendeteksi nama labelnya
+    // Menggambar Header berdasarkan batas kolom
     allData.cols.forEach((col, index) => {
         const headerText = (col && col.label) ? col.label : `Kolom ${index + 1}`;
         thead.innerHTML += `<th>${headerText}</th>`;
@@ -145,13 +150,11 @@ function renderTable() {
     let visibleRows = 0;
 
     allData.rows.forEach(row => {
-        // Penanganan Baris Kosong & Format Tanggal Google
         if (!row || !row.c) return; 
 
         let dateStr = null;
         if (row.c.length > dateIdx && row.c[dateIdx] !== null) {
             const cellData = row.c[dateIdx];
-            // Gunakan nilai format ('f') jika ada (contoh: "22 Juni 2026"), jika tidak gunakan nilai asli ('v')
             const rawVal = cellData.f ? cellData.f : cellData.v;
             dateStr = rawVal ? String(rawVal) : null;
         }
@@ -160,7 +163,7 @@ function renderTable() {
             visibleRows++;
             let tr = '<tr>';
             
-            // Loop persis sesuai jumlah kolom header (menghindari array patah akibat col.label kosong)
+            // Loop data selaras dengan batas header/kolom yang ditarik
             allData.cols.forEach((colDef, index) => {
                 const cell = (index < row.c.length && row.c[index] !== null) ? row.c[index] : null;
                 const displayValue = cell ? (cell.f ? cell.f : cell.v) : '-';
@@ -197,17 +200,25 @@ function initAutoScroll() {
 
         progress.style.width = `${(container.scrollTop / maxScroll) * 100}%`;
 
-        if (container.scrollTop + 1 >= maxScroll) {
+        // Deteksi dasar tabel
+        if (container.scrollTop >= maxScroll - 1) {
             container.scrollTop = maxScroll;
             progress.style.width = '100%';
             pausing = true;
             
+            // Berhenti 4 detik di baris terbawah
             setTimeout(() => {
+                // Lompat instan ke paling atas
                 container.scrollTop = 0;
                 progress.style.width = '0%';
-                setTimeout(() => pausing = false, 2000);
+                
+                // Berhenti 2 detik di baris teratas sebelum mulai menggulir turun lagi
+                setTimeout(() => {
+                    pausing = false;
+                }, 2000);
             }, 4000);
         } else {
+            // Gulir turun
             container.scrollTop += 1; 
         }
     }, 30); 
@@ -239,4 +250,6 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 initClock();
 fetchData();
 initAutoScroll();
+
+// Sinkronisasi data ke Google Sheets setiap 15 menit
 setInterval(fetchData, 900000);
