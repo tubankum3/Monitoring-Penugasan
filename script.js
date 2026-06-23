@@ -1,6 +1,6 @@
 /* ── Konfigurasi Aplikasi Berbasis Google Sheets API ── */
 const SHEET_ID = '1FOltLmWhUQ7Ouorzu1yHJsFmbzN45a_PpAiSkuuFUOA';
-let currentFilter = 'today'; // Default saat halaman dimuat sekarang adalah Hari Ini
+let currentFilter = 'today'; // Default filter diatur langsung ke Hari Ini
 
 // Menyimpan data mentah dari ketiga sheet setelah ditarik
 let sheetsStorage = {
@@ -27,6 +27,8 @@ const SHEET_DATE_INDEXES = {
 function initClock() {
     const clockEl = document.getElementById('clock-display');
     const dateEl  = document.getElementById('date-display');
+    if (!clockEl || !dateEl) return; // Pelindung jika elemen HTML tidak ditemukan
+
     const DAYS = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
     const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
@@ -45,33 +47,21 @@ function normalizeDate(dateObj) {
     return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()); 
 }
 
-/* ── Logika Rekayasa Parser Rentang Tanggal Indonesia (Versi 3.0 Akhir) ── */
-const idMonths = { "januari":0, "februari":1, "maret":2, "april":3, "mei":4, "juni":5, "juli":6, "agustus":7, "september":8, "oktober":9, "november":10, "desember":11 };
-
-function normalizeDate(dateObj) { 
-    if (!dateObj || typeof dateObj.getFullYear !== 'function') return null;
-    return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()); 
-}
-
 function extractDateRange(dateString) {
     if (!dateString) return null;
     
-    // 1. Bersihkan teks dan seragamkan variasi pemisah (s.d. / s.d / -) menjadi simbol pipa "|"
     let str = String(dateString).trim().toLowerCase();
-    str = str.replace(/\s*s\.d\.\s*/g, '|')  // Mengubah " s.d. " atau "s.d." menjadi "|"
-             .replace(/\s*s\.d\s*/g, '|')    // Mengubah " s.d " atau "s.d" menjadi "|"
-             .replace(/\s*-\s*/g, '|');      // Mengubah " - " atau "-" menjadi "|"
+    str = str.replace(/\s*s\.d\.\s*/g, '|')  
+             .replace(/\s*s\.d\s*/g, '|')    
+             .replace(/\s*-\s*/g, '|');      
 
-    // Fungsi internal untuk memotong teks menjadi array [tanggal, bulan, tahun]
     const splitParts = (s) => s.trim().split(/\s+/);
 
-    // 2. KASUS RENTANG WAKTU (Jika teks mengandung tanda pipa "|")
     if (str.includes('|')) {
         const sides = str.split('|');
-        const leftParts = splitParts(sides[0]);  // Sisi kiri (Awal)
-        const rightParts = splitParts(sides[1]); // Sisi kanan (Akhir)
+        const leftParts = splitParts(sides[0]);  
+        const rightParts = splitParts(sides[1]); 
 
-        // Urai sisi kanan terlebih dahulu karena pasti memiliki komponen lengkap (Tgl Bln Thn)
         if (rightParts.length < 3) return null; 
         const endDay = parseInt(rightParts[0]);
         const endMonthIdx = idMonths[rightParts[1]];
@@ -80,30 +70,25 @@ function extractDateRange(dateString) {
         if (isNaN(endDay) || endMonthIdx === undefined || isNaN(endYear)) return null;
         const endDt = new Date(endYear, endMonthIdx, endDay);
 
-        // Urai Sisi Kiri (Awal)
         let startDt;
         if (leftParts.length === 1) {
-            // Sub-Kasus A: Sisi kiri hanya angka murni (Contoh: "8" atau "10")
-            // Maka otomatis meminjam bulan dan tahun dari sisi kanan
             const startDay = parseInt(leftParts[0]);
             if (isNaN(startDay)) return null;
             startDt = new Date(endYear, endMonthIdx, startDay);
         } else if (leftParts.length === 3) {
-            // Sub-Kasus B: Sisi kiri lengkap (Contoh: "8 Juni 2026 s.d. 10 Juni 2026")
             const startDay = parseInt(leftParts[0]);
             const startMonthIdx = idMonths[leftParts[1]];
             const startYear = parseInt(leftParts[2]);
             if (isNaN(startDay) || startMonthIdx === undefined || isNaN(startYear)) return null;
             startDt = new Date(startYear, startMonthIdx, startDay);
         } else {
-            return null; // Format tidak didukung
+            return null; 
         }
 
         if (isNaN(startDt.getTime()) || isNaN(endDt.getTime())) return null;
         return { start: normalizeDate(startDt), end: normalizeDate(endDt) };
     }
     
-    // 3. KASUS TANGGAL TUNGGAL (Contoh: "4 Juni 2026")
     const parts = splitParts(str);
     if (parts.length < 3) return null;
     
@@ -175,25 +160,32 @@ async function fetchAllSheetsData() {
     renderAllTables();
 }
 
-/* ── Pemrosesan & Rendering Bertumpuk (Stacked Rendering) ── */
+/* ── Pemrosesan & Rendering Bertumpuk Terproteksi ── */
 function renderAllTables() {
-    // Jalankan kompilasi render untuk masing-masing seksi tabel secara spesifik
-    renderIndividualTable('ST Perkara', 'head-st-perkara', 'body-st-perkara');
-    renderIndividualTable('ST Pendampingan', 'head-st-pendampingan', 'body-st-pendampingan');
-    renderIndividualTable('ST Lain-Lain', 'head-st-lain-lain', 'body-st-lain-lain');
+    // Diproses satu per satu dengan proteksi try-catch terisolasi agar kegagalan satu tabel tidak mematikan tabel lain
+    try { renderIndividualTable('ST Perkara', 'head-st-perkara', 'body-st-perkara'); } catch(e) { console.error(e); }
+    try { renderIndividualTable('ST Pendampingan', 'head-st-pendampingan', 'body-st-pendampingan'); } catch(e) { console.error(e); }
+    try { renderIndividualTable('ST Lain-Lain', 'head-st-lain-lain', 'body-st-lain-lain'); } catch(e) { console.error(e); }
 }
 
 function renderIndividualTable(sheetName, headId, bodyId) {
     const thead = document.getElementById(headId);
     const tbody = document.getElementById(bodyId);
+    
+    // PELINDUNG SILENT FAIL: Jika ID salah ketik di HTML, laporkan ke console tanpa menghentikan aplikasi
+    if (!thead || !tbody) {
+        console.error(`Peringatan: Elemen dengan ID '${headId}' atau '${bodyId}' tidak ditemukan di HTML.`);
+        return;
+    }
+
     thead.innerHTML = ''; 
     tbody.innerHTML = '';
 
     const tableData = sheetsStorage[sheetName];
 
     if (!tableData || !tableData.cols) {
-        thead.innerHTML = `<th>Koneksi Error</th>`;
-        tbody.innerHTML = `<tr><td>Gagal memuat struktur data untuk ${sheetName}. Pastikan dokumen publik.</td></tr>`;
+        thead.innerHTML = `<th>Koneksi Bermasalah</th>`;
+        tbody.innerHTML = `<tr><td style="color:#ff6b6b; padding:20px; font-size:20px;">Gagal menarik data atau lembar kerja kosong.</td></tr>`;
         return;
     }
 
@@ -231,14 +223,16 @@ function renderIndividualTable(sheetName, headId, bodyId) {
     });
 
     if (visibleRows === 0) {
-        tbody.innerHTML = `<tr><td colspan="${tableData.cols.length}" style="text-align:center; padding: 40px; color:#8C9CAE; font-size:24px;">Tidak ada data penugasan aktif pada seksi ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${tableData.cols.length}" style="text-align:center; padding: 40px; color:#8C9CAE; font-size:21px;">Tidak ada data penugasan aktif untuk hari ini.</td></tr>`;
     }
 }
 
-/* ── Logika Putaran Gulir Otomatis Seluruh Halaman (Full Stack Auto-Scroll Loop) ── */
+/* ── Logika Putaran Gulir Otomatis Seluruh Halaman ── */
 function initAutoScroll() {
     const container = document.getElementById('data-container');
     const progress = document.getElementById('progress-bar');
+    if (!container || !progress) return;
+
     let pausing = false;
 
     setInterval(() => {
@@ -253,21 +247,15 @@ function initAutoScroll() {
 
         progress.style.width = `${(container.scrollTop / maxScroll) * 100}%`;
 
-        // Deteksi jika guliran menyentuh baris akhir terbawah tabel ke-3
         if (container.scrollTop >= maxScroll - 1) {
             container.scrollTop = maxScroll;
             progress.style.width = '100%';
             pausing = true;
             
-            // Jeda 4 detik di dasar halaman, lalu melompat instan ke awal tabel ke-1
             setTimeout(() => {
                 container.scrollTop = 0;
                 progress.style.width = '0%';
-                
-                // Jeda 2 detik di puncak halaman sebelum mulai berjalan kembali
-                setTimeout(() => {
-                    pausing = false;
-                }, 2000);
+                setTimeout(() => pausing = false, 2000);
             }, 4000);
         } else {
             container.scrollTop += 1; 
@@ -275,22 +263,25 @@ function initAutoScroll() {
     }, 30); 
 }
 
-/* ── Event Listener Kendali Filter Periode Waktu ── */
-document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        
-        currentFilter = e.target.getAttribute('data-filter');
-        renderAllTables(); // Re-render bertumpuk secara instan tanpa membebani jaringan ulang
-        document.getElementById('data-container').scrollTop = 0; // Kembalikan ke atas seksi ke-1
-    });
-});
+/* ── Inisialisasi Siklus Hidup Aplikasi Terproteksi ── */
+window.onload = () => {
+    initClock();
+    fetchAllSheetsData();
+    initAutoScroll();
 
-/* ── Inisialisasi Boot Awal Aplikasi Ekplorer ── */
-initClock();
-fetchAllSheetsData();
-initAutoScroll();
+    // Event Listener Kendali Filter Periode Waktu
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            
+            currentFilter = e.target.getAttribute('data-filter');
+            renderAllTables(); 
+            const container = document.getElementById('data-container');
+            if (container) container.scrollTop = 0; 
+        });
+    });
+};
 
 // Melakukan sinkronisasi ulang data di latar belakang ke Google Sheets tiap 15 menit
 setInterval(fetchAllSheetsData, 900000);
