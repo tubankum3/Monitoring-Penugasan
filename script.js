@@ -45,30 +45,77 @@ function normalizeDate(dateObj) {
     return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()); 
 }
 
+/* ── Logika Rekayasa Parser Rentang Tanggal Indonesia (Versi 3.0 Akhir) ── */
+const idMonths = { "januari":0, "februari":1, "maret":2, "april":3, "mei":4, "juni":5, "juli":6, "agustus":7, "september":8, "oktober":9, "november":10, "desember":11 };
+
+function normalizeDate(dateObj) { 
+    if (!dateObj || typeof dateObj.getFullYear !== 'function') return null;
+    return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()); 
+}
+
 function extractDateRange(dateString) {
     if (!dateString) return null;
-    const str = String(dateString).trim();
+    
+    // 1. Bersihkan teks dan seragamkan variasi pemisah (s.d. / s.d / -) menjadi simbol pipa "|"
+    let str = String(dateString).trim().toLowerCase();
+    str = str.replace(/\s*s\.d\.\s*/g, '|')  // Mengubah " s.d. " atau "s.d." menjadi "|"
+             .replace(/\s*s\.d\s*/g, '|')    // Mengubah " s.d " atau "s.d" menjadi "|"
+             .replace(/\s*-\s*/g, '|');      // Mengubah " - " atau "-" menjadi "|"
 
-    const parse = (s) => {
-        const parts = s.trim().split(/\s+/);
-        if (parts.length < 3) return null; 
-        const monthIdx = idMonths[parts[1].toLowerCase()];
-        if (monthIdx === undefined) return null; 
-        const parsedDate = new Date(parts[2], monthIdx, parts[0]);
-        if (isNaN(parsedDate.getTime())) return null; 
-        return parsedDate;
-    };
+    // Fungsi internal untuk memotong teks menjadi array [tanggal, bulan, tahun]
+    const splitParts = (s) => s.trim().split(/\s+/);
 
-    if (str.toLowerCase().includes('s.d.')) {
-        const parts = str.toLowerCase().split('s.d.');
-        const startDt = parse(parts[0]);
-        const endDt = parse(parts[1]);
-        if (!startDt || !endDt) return null; 
+    // 2. KASUS RENTANG WAKTU (Jika teks mengandung tanda pipa "|")
+    if (str.includes('|')) {
+        const sides = str.split('|');
+        const leftParts = splitParts(sides[0]);  // Sisi kiri (Awal)
+        const rightParts = splitParts(sides[1]); // Sisi kanan (Akhir)
+
+        // Urai sisi kanan terlebih dahulu karena pasti memiliki komponen lengkap (Tgl Bln Thn)
+        if (rightParts.length < 3) return null; 
+        const endDay = parseInt(rightParts[0]);
+        const endMonthIdx = idMonths[rightParts[1]];
+        const endYear = parseInt(rightParts[2]);
+
+        if (isNaN(endDay) || endMonthIdx === undefined || isNaN(endYear)) return null;
+        const endDt = new Date(endYear, endMonthIdx, endDay);
+
+        // Urai Sisi Kiri (Awal)
+        let startDt;
+        if (leftParts.length === 1) {
+            // Sub-Kasus A: Sisi kiri hanya angka murni (Contoh: "8" atau "10")
+            // Maka otomatis meminjam bulan dan tahun dari sisi kanan
+            const startDay = parseInt(leftParts[0]);
+            if (isNaN(startDay)) return null;
+            startDt = new Date(endYear, endMonthIdx, startDay);
+        } else if (leftParts.length === 3) {
+            // Sub-Kasus B: Sisi kiri lengkap (Contoh: "8 Juni 2026 s.d. 10 Juni 2026")
+            const startDay = parseInt(leftParts[0]);
+            const startMonthIdx = idMonths[leftParts[1]];
+            const startYear = parseInt(leftParts[2]);
+            if (isNaN(startDay) || startMonthIdx === undefined || isNaN(startYear)) return null;
+            startDt = new Date(startYear, startMonthIdx, startDay);
+        } else {
+            return null; // Format tidak didukung
+        }
+
+        if (isNaN(startDt.getTime()) || isNaN(endDt.getTime())) return null;
         return { start: normalizeDate(startDt), end: normalizeDate(endDt) };
     }
     
-    const singleDt = parse(str);
-    if (!singleDt) return null;
+    // 3. KASUS TANGGAL TUNGGAL (Contoh: "4 Juni 2026")
+    const parts = splitParts(str);
+    if (parts.length < 3) return null;
+    
+    const day = parseInt(parts[0]);
+    const monthIdx = idMonths[parts[1]];
+    const year = parseInt(parts[2]);
+    
+    if (isNaN(day) || monthIdx === undefined || isNaN(year)) return null;
+    
+    const singleDt = new Date(year, monthIdx, day);
+    if (isNaN(singleDt.getTime())) return null;
+    
     return { start: normalizeDate(singleDt), end: normalizeDate(singleDt) };
 }
 
@@ -184,7 +231,7 @@ function renderIndividualTable(sheetName, headId, bodyId) {
     });
 
     if (visibleRows === 0) {
-        tbody.innerHTML = `<tr><td colspan="${tableData.cols.length}" style="text-align:center; padding: 40px; color:#8C9CAE; font-size:24px;">Tidak ada data penugasan pada kategori ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${tableData.cols.length}" style="text-align:center; padding: 40px; color:#8C9CAE; font-size:24px;">Tidak ada data penugasan aktif pada seksi ini.</td></tr>`;
     }
 }
 
