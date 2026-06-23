@@ -184,7 +184,7 @@ function renderIndividualTable(sheetName, headId, bodyId) {
     });
 
     if (visibleRows === 0) {
-        tbody.innerHTML = `<tr><td colspan="${tableData.cols.length}" style="text-align:center; padding: 40px; color:#8C9CAE; font-size:24px;">Tidak ada data penugasan aktif pada seksi ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${tableData.cols.length}" style="text-align:center; padding: 40px; color:#8C9CAE; font-size:24px;">Tidak ada data penugasan pada kategori ini.</td></tr>`;
     }
 }
 
