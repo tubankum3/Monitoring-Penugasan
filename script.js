@@ -39,25 +39,43 @@ function extractDateRange(dateString) {
     const str = String(dateString);
 
     const parse = (s) => {
-        const parts = s.trim().split(' ');
-        if (parts.length < 3) return null;
-        return new Date(parts[2], idMonths[parts[1]], parts[0]);
+        // Menggunakan regex /\s+/ agar aman dari spasi ganda
+        const parts = s.trim().split(/\s+/);
+        if (parts.length < 3) return null; // Jika bukan format 3 kata, kembalikan null
+        
+        const monthIdx = idMonths[parts[1]];
+        if (monthIdx === undefined) return null; // Jika nama bulan salah ketik, abaikan
+        
+        const parsedDate = new Date(parts[2], monthIdx, parts[0]);
+        if (isNaN(parsedDate.getTime())) return null; // Jika hasilnya Invalid Date, abaikan
+        
+        return parsedDate;
     };
 
     if (str.includes('s.d.')) {
         const parts = str.split('s.d.');
-        return { start: normalizeDate(parse(parts[0])), end: normalizeDate(parse(parts[1])) };
+        const startDt = parse(parts[0]);
+        const endDt = parse(parts[1]);
+        
+        // PERBAIKAN: Pastikan kedua tanggal valid sebelum diproses ke normalizeDate
+        if (!startDt || !endDt) return null; 
+        
+        return { start: normalizeDate(startDt), end: normalizeDate(endDt) };
     }
     
-    const single = normalizeDate(parse(str));
-    return { start: single, end: single };
+    const singleDt = parse(str);
+    
+    // PERBAIKAN: Pastikan tanggal valid sebelum diproses ke normalizeDate
+    if (!singleDt) return null;
+    
+    return { start: normalizeDate(singleDt), end: normalizeDate(singleDt) };
 }
 
 function rowPassesFilter(dateString, filterType) {
     if (filterType === 'all') return true;
     
     const range = extractDateRange(dateString);
-    if (!range || isNaN(range.start.getTime())) return false; 
+    if (!range) return false; // Baris dengan teks tanggal yang invalid/kosong akan disembunyikan saat difilter
 
     const now = normalizeDate(new Date());
     
@@ -86,7 +104,7 @@ async function fetchData() {
         const response = await fetch(url);
         const text = await response.text();
         
-        // PERBAIKAN 1: Ekstraksi JSON Dinamis (Anti Gagal)
+        // Ekstraksi JSON Dinamis (Anti Gagal)
         const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
         const json = JSON.parse(jsonString);
         
@@ -116,7 +134,7 @@ function renderTable() {
     let visibleRows = 0;
 
     allData.rows.forEach(row => {
-        // PERBAIKAN 2: Penanganan Baris Kosong & Format Tanggal Google
+        // Penanganan Baris Kosong & Format Tanggal Google
         if (!row || !row.c) return; 
 
         let dateStr = null;
