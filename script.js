@@ -9,9 +9,9 @@ let sheetsStorage = {
     'ST Lain-Lain': null
 };
 
-// Batasan Kolom Khusus per Sheet (A-G atau A-E)
+// Batasan Kolom Khusus per Sheet (A-H atau A-E)
 const SHEET_QUERIES = {
-    'ST Perkara': 'SELECT A,B,C,D,E,F,G',
+    'ST Perkara': 'SELECT A,B,C,D,E,F,G,H',
     'ST Pendampingan': 'SELECT A,B,C,D,E',
     'ST Lain-Lain': 'SELECT A,B,C,D,E'
 };
